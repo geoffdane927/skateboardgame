@@ -13,7 +13,7 @@ const sun=new THREE.DirectionalLight(0xffe4ba,3.1);sun.position.set(-18,35,18);s
 const world=buildWorld(THREE,scene),player=createPlayer(THREE,scene);
 const clock=new THREE.Clock();
 const state={cash:STARTING_CASH,income:STARTING_INCOME,floor:0,owned:new Set(),unlocked:new Set([0]),totalEarned:0,selectedPad:null,toastTimer:0};
-const keys=new Set();let lastIncomeTick=0,mouseDown=null,cameraYaw=0.0,cameraPitch=.28;
+const keys=new Set();let lastIncomeTick=0,mouseDown=null,cameraYaw=Math.PI,cameraPitch=.28;
 const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
 const ui={cash:document.querySelector("#cash"),income:document.querySelector("#income"),floor:document.querySelector("#floorName"),owned:document.querySelector("#owned"),upgrades:document.querySelector("#upgradeList"),floors:document.querySelector("#floorList"),toast:document.querySelector("#toast"),hint:document.querySelector("#hint"),progress:document.querySelector("#progress")};
 function say(message){ui.toast.textContent=message;ui.toast.classList.add("show");state.toastTimer=2.6}
@@ -31,7 +31,7 @@ function renderUI(){
  ui.upgrades.innerHTML="";
  FLOORS[state.floor].upgrades.forEach((u,i)=>{
   const bought=state.owned.has(u.id),payback=paybackSeconds(u);
-  const b=document.createElement("button");b.className="upgrade"+(bought?" bought":"")+(state.cash<u.cost&&!bought?" unaffordable":"");
+  const b=document.createElement("button");b.dataset.cost=String(u.cost);b.className="upgrade"+(bought?" bought":"")+(state.cash<u.cost&&!bought?" unaffordable":"");
   b.disabled=bought;
   b.innerHTML='<span class="upgrade-top"><strong>'+u.name+'</strong><b>'+(bought?"✓ OWNED":formatCash(u.cost))+'</b></span><span class="desc">'+u.desc+'</span><span class="upgrade-bottom"><span>+'+formatCash(u.rate)+'/sec</span><span>Payback '+payback.toFixed(1)+'s</span></span>';
   b.addEventListener("click",()=>buyUpgrade(state.floor,u.id));ui.upgrades.appendChild(b);
@@ -86,7 +86,7 @@ document.querySelector("#resetBtn").addEventListener("click",()=>{player.root.po
 function update(dt,time){
  // Continuous production is paid every frame, so income never depends on frame rate.
  const earned=state.income*dt;state.cash+=earned;state.totalEarned+=earned;
- if(time-lastIncomeTick>.18){renderUI();lastIncomeTick=time}
+ if(time-lastIncomeTick>.18){ui.cash.textContent=formatCash(state.cash);ui.income.textContent=formatCash(state.income)+"/s";ui.upgrades.querySelectorAll(".upgrade:not(.bought)").forEach(b=>{const unaffordable=state.cash<Number(b.dataset.cost);b.classList.toggle("unaffordable",unaffordable)});lastIncomeTick=time}
  const speed=(keys.has("shift")?8.2:5.2),forward=(keys.has("w")?1:0)-(keys.has("s")?1:0),turn=(keys.has("d")?1:0)-(keys.has("a")?1:0);
  player.face+=turn*dt*2.5;player.root.rotation.y=player.face;
  const moving=forward!==0;
