@@ -22,8 +22,7 @@ const raycaster=new THREE.Raycaster(), pointer=new THREE.Vector2();
 function toast(t){toastEl.textContent=t;toastEl.style.opacity=1;clearTimeout(toast.timer);toast.timer=setTimeout(()=>toastEl.style.opacity=0,1400)}
 function box(parent,w,h,d,material,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
 function placePiece(type,x,z,rot=0){const g=makePiece(THREE,{concrete,dark,yellow,metal,mat,box},type);g.position.set(Math.round(x),0,Math.round(z));g.rotation.y=rot;scene.add(g);pieces.push(g);return g}
-function placePiece(type,x,z,rot=0){const g=makePiece(type);g.position.set(Math.round(x),0,Math.round(z));g.rotation.y=rot;scene.add(g);pieces.push(g);return g}
-function makeGhost(){if(ghost)scene.remove(ghost);ghost=makePiece(selectedType);ghost.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.45;o.material.depthWrite=false}});ghost.visible=false;scene.add(ghost)}
+function makeGhost(){if(ghost)scene.remove(ghost);ghost=makePiece(THREE,{concrete,dark,yellow,metal,mat,box},selectedType);ghost.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.45;o.material.depthWrite=false}});ghost.visible=false;scene.add(ghost)}
 makeGhost();
 function selectPiece(g){if(selected&&selected.userData.outline){selected.remove(selected.userData.outline)}selected=g;if(g){const outline=new THREE.BoxHelper(g,0xc4f45b);scene.add(outline);selected.userData.outline=outline}}
 function deleteSelected(){if(!selected)return;scene.remove(selected);pieces=pieces.filter(p=>p!==selected);if(selected.userData.outline)scene.remove(selected.userData.outline);selected=null;toast('Piece removed')}
