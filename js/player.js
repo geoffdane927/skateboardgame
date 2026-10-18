@@ -16,7 +16,7 @@ export function createPlayer(THREE,scene){
   const arm=new THREE.Group();arm.position.set(side*.36,1.62,0);root.add(arm);
   const upper=new THREE.Mesh(new THREE.CylinderGeometry(.095,.12,.48,8),shirt);upper.position.y=-.25;upper.castShadow=true;arm.add(upper);
   const hand=new THREE.Mesh(new THREE.SphereGeometry(.105,8,7),skin);hand.position.y=-.53;hand.castShadow=true;arm.add(hand);limbs.push({node:arm,side,arm:true});
-  const leg=new THREE.Group();leg.position.set(side*.15,.98,0);root.add(leg);
+  const leg=new THREE.Group();leg.position.set(side*.15,.55,0);root.add(leg);
   const thigh=new THREE.Mesh(new THREE.CylinderGeometry(.13,.11,.48,8),pants);thigh.position.y=-.24;thigh.castShadow=true;leg.add(thigh);
   const foot=new THREE.Mesh(new THREE.BoxGeometry(.23,.13,.38),shoe);foot.position.set(0,-.5,.08);foot.castShadow=true;leg.add(foot);limbs.push({node:leg,side,arm:false});
  }
