@@ -91,7 +91,7 @@ const board=new THREE.Group();skater.add(board);
 box(board,.3,.12,1.05,deckMat,0,.18,0);const grip=new THREE.Mesh(new THREE.BoxGeometry(.24,.012,.85),mat(0x454d50));grip.position.y=.247;board.add(grip);
 for(let x of [-.19,.19])for(let z of [-.34,.34]){const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.07,12),wheelMat);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.1,z);board.add(wheel)}
 const legs=new THREE.Group();skater.add(legs);box(legs,.22,.62,.22,pantsMat,-.16,.62,0);box(legs,.22,.62,.22,pantsMat,.16,.62,0);box(legs,.56,.18,.27,shirtMat,0,1.08,0);const head=new THREE.Mesh(new THREE.SphereGeometry(.19,16,12),mat(0xdca77e));head.position.set(0,1.52,0);skater.add(head);box(skater,.12,.38,.12,shirtMat,-.37,1.04,0);box(skater,.12,.38,.12,shirtMat,.37,1.04,0);
-let velocity=0,vy=0,onGround=true,airSpin=0,airLean=0,spinVelocity=0,leanVelocity=0,airTime=0;
+let velocity=0,vy=0,velocityX=0,velocityZ=0,onGround=true,airSpin=0,airLean=0,spinVelocity=0,leanVelocity=0,airTime=0;
 let grinding=null,grindTime=0,grindBalance=0,kickflipTime=0,trickPoints=0;
 function finishGrind(){if(!grinding)return;const pts=Math.max(50,Math.floor(grindTime*120));score+=pts;trickPoints+=pts;document.getElementById('scoreText').textContent=score+' points';grinding=null;grindTime=0;grindBalance=0;toast('Grind! +'+pts)}
 function jump(){if(!onGround)return;if(grinding)finishGrind();vy=5.6+Math.min(Math.abs(velocity)*.12,1.2);onGround=false;airTime=0;spinVelocity=0;leanVelocity=0;skater.rotation.x=0;skater.rotation.z=0}
@@ -107,11 +107,12 @@ function skateUpdate(dt){
    velocity*=Math.pow(.997,dt*60);
    if(Math.abs(grindBalance)>.94){score+=Math.floor(grindTime*70);document.getElementById('scoreText').textContent=score+' points';grinding=null;grindTime=0;grindBalance=0;toast('Grind bail!')}
    else if(keys.Space)jump();
-  }else{skater.rotation.y+=turn*dt*(1.45+Math.abs(velocity)*.08);velocity+=drive*dt*4.2;velocity*=Math.pow(.985,dt*60);velocity=THREE.MathUtils.clamp(velocity,-4,12)}
+  }else{skater.rotation.y+=turn*dt*(1.45+Math.abs(velocity)*.08);velocity+=drive*dt*8.5;velocity*=Math.pow(.985,dt*60);velocity=THREE.MathUtils.clamp(velocity,-4,12)}
   airSpin=0;airLean=0;
- }else{spinVelocity+=turn*dt*3.5;spinVelocity*=Math.pow(.985,dt*60);airSpin+=spinVelocity*dt;leanVelocity+=drive*dt*2.7;leanVelocity*=Math.pow(.98,dt*60);airLean=THREE.MathUtils.clamp(airLean+leanVelocity*dt,-.8,.8);airTime+=dt}
+ }else{skater.rotation.y+=turn*dt*(1.45+Math.abs(velocity)*.08);spinVelocity+=turn*dt*10.5;spinVelocity*=Math.pow(.94,dt*60);airSpin+=spinVelocity*dt;leanVelocity+=drive*dt*2.7;leanVelocity*=Math.pow(.98,dt*60);airLean=THREE.MathUtils.clamp(airLean+leanVelocity*dt,-.8,.8);airTime+=dt}
  const forward=new THREE.Vector3(Math.sin(skater.rotation.y),0,Math.cos(skater.rotation.y));
- skater.position.x+=forward.x*velocity*dt;skater.position.z+=forward.z*velocity*dt;
+ velocityX=forward.x*velocity;velocityZ=forward.z*velocity;
+ skater.position.x+=velocityX*dt;skater.position.z+=velocityZ*dt;
  skater.position.x=THREE.MathUtils.clamp(skater.position.x,-21,21);skater.position.z=THREE.MathUtils.clamp(skater.position.z,-21,21);
  const gh=groundHeight(skater.position.x,skater.position.z);
  if(!onGround){
@@ -121,7 +122,7 @@ function skateUpdate(dt){
    if(grind&&Math.abs(velocity)>1.1&&airTime>.08){
     grinding=grind;grindTime=0;grindBalance=0;skater.position.y=grind.height+.12;vy=0;onGround=true;toast('GRIND! Use A/D to balance');
    }else{
-    if(airTime>.25){const spin=Math.abs(airSpin)/(Math.PI*2),lean=Math.abs(airLean);const trick=Math.floor(spin*180)+Math.floor(lean*70)+Math.floor(Math.abs(velocity)*3)+trickPoints;if(trick>0){score+=trick;document.getElementById('scoreText').textContent=score+' points';toast('Landed! +'+trick+' points')}trickPoints=0}
+    if(airTime>.25){const speed=Math.hypot(velocityX,velocityZ);const moveAngle=Math.atan2(velocityX,velocityZ);const sideAngle=Math.abs(Math.atan2(Math.sin(skater.rotation.y-moveAngle),Math.cos(skater.rotation.y-moveAngle)));const uprightAngle=Math.abs(Math.atan2(Math.sin(airLean),Math.cos(airLean)));const bailed= speed>.5 && sideAngle>Math.PI/4 || uprightAngle>Math.PI/18; if(bailed){score=Math.max(0,score);document.getElementById('modeText').textContent='BAILED';toast(sideAngle>Math.PI/4?'BAIL! Landed sideways':'BAIL! Not upright');velocity*=.45;trickPoints=0}else{const spin=Math.abs(airSpin)/(Math.PI*2),lean=Math.abs(airLean);const trick=Math.floor(spin*180)+Math.floor(lean*70)+Math.floor(Math.abs(velocity)*3)+trickPoints;if(trick>0){score+=trick;document.getElementById('scoreText').textContent=score+' points';toast('Landed! +'+trick+' points')}trickPoints=0}}
     skater.position.y=gh+.12;vy=0;onGround=true;grinding=null;airSpin=airLean=spinVelocity=leanVelocity=0;skater.rotation.x=0;skater.rotation.z=0;
    }
   }
