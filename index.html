@@ -96,7 +96,55 @@ let grinding=null,grindTime=0,grindBalance=0,kickflipTime=0,trickPoints=0;
 function finishGrind(){if(!grinding)return;const pts=Math.max(50,Math.floor(grindTime*120));score+=pts;trickPoints+=pts;document.getElementById('scoreText').textContent=score+' points';grinding=null;grindTime=0;grindBalance=0;toast('Grind! +'+pts)}
 function jump(){if(!onGround)return;if(grinding)finishGrind();airTravelAngle=skater.rotation.y+(velocity<0?Math.PI:0);vy=5.6+Math.min(Math.abs(velocity)*.12,1.2);onGround=false;airTime=0;spinVelocity=0;leanVelocity=0;skater.rotation.x=0;skater.rotation.z=0}
 function startKickflip(){if(mode!=='play'||onGround||kickflipTime>0)return;kickflipTime=.48;trickPoints+=300;toast('KICKFLIP! +300')}
-function grindSurfaceAt(x,z){let best=null,bestD=Infinity;for(const p of pieces){const type=p.userData.type;if(type!=='rail'&&type!=='box')continue;const local=new THREE.Vector3(x-p.position.x,0,z-p.position.z).applyAxisAngle(new THREE.Vector3(0,1,0),-p.rotation.y);let h=0,valid=false;if(type==='rail'&&Math.abs(local.x)<.32&&Math.abs(local.z)<1.7){h=.62;valid=true}else if(type==='box'&&Math.abs(local.x)<1.62&&Math.abs(local.z)<.68){h=.48;valid=true}if(!valid)continue;const dist=Math.abs((skater.position.y-.12)-h);if(dist<bestD&&dist<.72){bestD=dist;best={piece:p,height:h,type,local}}}return best}
+function grindSurfaceAt(x,z){
+ let best=null,bestD=Infinity;
+ for(const p of pieces){
+  const type=p.userData.type;
+  const local=new THREE.Vector3(x-p.position.x,0,z-p.position.z).applyAxisAngle(new THREE.Vector3(0,1,0),-p.rotation.y);
+  let h=0,valid=false,edge=false;
+  if(type==='rail'&&Math.abs(local.x)<.32&&Math.abs(local.z)<1.7){h=.62;valid=true}
+  else if(type==='box'&&Math.abs(local.x)<1.62&&Math.abs(local.z)<.68){
+   h=.48;valid=true;
+   edge=Math.abs(Math.abs(local.x)-1.5)<.2||Math.abs(Math.abs(local.z)-.55)<.2;
+  }else if(type==='wall'&&Math.abs(local.x)<1.62&&Math.abs(local.z)<.48&&skater.position.y>1.05){
+   h=1.66;valid=true;edge=true;
+  }else if(type==='stairs'&&Math.abs(local.x)<1.55){
+   const step=Math.max(0,Math.min(3,Math.floor((local.z+1.5)/.65)));
+   h=.25*(step+1)+.06;
+   const z0=-1.5+step*.65,z1=z0+.65;
+   if(local.z>=z0-.08&&local.z<=z1+.08&&skater.position.y>h-.42){valid=true;edge=Math.abs(local.z-z0)<.18||Math.abs(local.z-z1)<.18||Math.abs(Math.abs(local.x)-1.4)<.2}
+  }else if(type==='quarter'&&Math.abs(local.z)<1.55&&local.x>1.45&&local.x<2.25){h=2.5;valid=true;edge=true}
+  else if(type==='ramp'&&Math.abs(local.z)<1.55&&local.x>1.3&&local.x<2.15){h=1.4;valid=true;edge=true}
+  if(!valid)continue;
+  const dist=Math.abs((skater.position.y-.12)-h);
+  if(dist<bestD&&dist<(edge?.48:.62)){bestD=dist;best={piece:p,height:h,type,local,edge}}
+ }
+ return best
+}
+function resolveObstacleCollision(prevX,prevZ){
+ for(const p of pieces){
+  const type=p.userData.type;
+  if(!['wall','box','stairs','rail'].includes(type))continue;
+  const c=Math.cos(-p.rotation.y),s=Math.sin(-p.rotation.y);
+  const toLocal=(x,z)=>({x:(x-p.position.x)*c-(z-p.position.z)*s,z:(x-p.position.x)*s+(z-p.position.z)*c});
+  const now=toLocal(skater.position.x,skater.position.z),prev=toLocal(prevX,prevZ);
+  let hx=0,hz=0,top=0;
+  if(type==='wall'){hx=1.58;hz=.28;top=1.68}
+  else if(type==='box'){hx=1.55;hz=.6;top=.55}
+  else if(type==='stairs'){hx=1.48;hz=1.55;top=1.0}
+  else {hx=.16;hz=1.7;top=.68}
+  if(Math.abs(now.x)>hx||Math.abs(now.z)>hz||skater.position.y>=top-.05)continue;
+  // Resolve along the axis crossed this frame, keeping the skater outside the obstacle.
+  if(Math.abs(prev.x)>hx+.01){now.x=Math.sign(prev.x)*(hx+.025);now.z=THREE.MathUtils.clamp(now.z,-hz-.025,hz+.025)}
+  else if(Math.abs(prev.z)>hz+.01){now.z=Math.sign(prev.z)*(hz+.025);now.x=THREE.MathUtils.clamp(now.x,-hx-.025,hx+.025)}
+  else {
+   const dx=hx-Math.abs(now.x),dz=hz-Math.abs(now.z);
+   if(dx<dz)now.x=Math.sign(now.x||1)*(hx+.025);else now.z=Math.sign(now.z||1)*(hz+.025);
+  }
+  const wx=now.x*c+now.z*s,wz=-now.x*s+now.z*c;
+  skater.position.x=p.position.x+wx;skater.position.z=p.position.z+wz;
+ }
+}
 function groundHeight(x,z){let h=0;for(const p of pieces){const local=new THREE.Vector3(x-p.position.x,0,z-p.position.z);local.applyAxisAngle(new THREE.Vector3(0,1,0),-p.rotation.y);const ax=Math.abs(local.x),az=Math.abs(local.z),t=p.userData.type;if(t==='box'&&ax<1.5&&az<.55)h=Math.max(h,.48);if(t==='stairs'&&ax<1.4&&az<1.3){h=Math.max(h,.25*(4-Math.max(0,Math.floor((local.z+1.5)/.65))))}if(t==='ramp'&&ax<2&&az<1.5){h=Math.max(h,Math.max(0,(local.x+2)*.35))}if(t==='quarter'&&ax<2&&az<1.5){h=Math.max(h,Math.max(0,Math.min(2.5,(local.x+2)*.6)))}}return h}
 function skateUpdate(dt){
  const turn=(keys.KeyA?1:0)-(keys.KeyD?1:0),drive=(keys.KeyW?1:0)-(keys.KeyS?1:0);
@@ -113,8 +161,10 @@ function skateUpdate(dt){
  const moveAngle=onGround?skater.rotation.y+(velocity<0?Math.PI:0):airTravelAngle;
  const forward=new THREE.Vector3(Math.sin(moveAngle),0,Math.cos(moveAngle));
  velocityX=forward.x*Math.abs(velocity);velocityZ=forward.z*Math.abs(velocity);
+ const prevX=skater.position.x,prevZ=skater.position.z;
  skater.position.x+=velocityX*dt;skater.position.z+=velocityZ*dt;
  skater.position.x=THREE.MathUtils.clamp(skater.position.x,-21,21);skater.position.z=THREE.MathUtils.clamp(skater.position.z,-21,21);
+ resolveObstacleCollision(prevX,prevZ);
  const gh=groundHeight(skater.position.x,skater.position.z);
  if(!onGround){
   vy-=12*dt;skater.position.y+=vy*dt;
