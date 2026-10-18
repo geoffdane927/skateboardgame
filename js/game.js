@@ -24,7 +24,7 @@ function renderUI(){
  ui.cash.textContent=formatCash(state.cash);ui.income.textContent=formatCash(state.income)+"/s";ui.floor.textContent=FLOORS[state.floor].name;ui.owned.textContent=totalOwned()+" / 16 upgrades";
  ui.floors.innerHTML="";
  FLOORS.forEach((f,i)=>{
-  const b=document.createElement("button");b.className="floor-tab"+(state.floor===i?" selected":"")+(floorOwned(i)?"":" locked");
+  const b=document.createElement("button");b.dataset.floorIndex=String(i);b.className="floor-tab"+(state.floor===i?" selected":"")+(floorOwned(i)?"":" locked");
   b.innerHTML="<strong>"+(i+1)+". "+f.name+"</strong><span>"+(floorOwned(i)?"Unlocked":("Unlock "+formatCash(f.unlockCost)))+"</span>";
   b.addEventListener("click",()=>{if(floorOwned(i)){goFloor(i)}else unlockFloor(i)});ui.floors.appendChild(b);
  });
@@ -86,7 +86,7 @@ document.querySelector("#resetBtn").addEventListener("click",()=>{player.root.po
 function update(dt,time){
  // Continuous production is paid every frame, so income never depends on frame rate.
  const earned=state.income*dt;state.cash+=earned;state.totalEarned+=earned;
- if(time-lastIncomeTick>.18){ui.cash.textContent=formatCash(state.cash);ui.income.textContent=formatCash(state.income)+"/s";ui.upgrades.querySelectorAll(".upgrade:not(.bought)").forEach(b=>{const unaffordable=state.cash<Number(b.dataset.cost);b.classList.toggle("unaffordable",unaffordable)});lastIncomeTick=time}
+ if(time-lastIncomeTick>.18){ui.cash.textContent=formatCash(state.cash);ui.income.textContent=formatCash(state.income)+"/s";ui.upgrades.querySelectorAll(".upgrade:not(.bought)").forEach(b=>{const unaffordable=state.cash<Number(b.dataset.cost);b.classList.toggle("unaffordable",unaffordable)});ui.floors.querySelectorAll(".floor-tab.locked").forEach(b=>{const i=Number(b.dataset.floorIndex),f=FLOORS[i],label=b.querySelector("span");label.textContent=!floorOwned(i-1)?"Requires previous floor":"Unlock "+formatCash(f.unlockCost)+" · "+Math.ceil(Math.max(0,f.unlockCost-state.cash)/state.income)+"s at current rate"});lastIncomeTick=time}
  const speed=(keys.has("shift")?8.2:5.2),forward=(keys.has("w")?1:0)-(keys.has("s")?1:0),turn=(keys.has("d")?1:0)-(keys.has("a")?1:0);
  player.face+=turn*dt*2.5;player.root.rotation.y=player.face;
  const moving=forward!==0;
