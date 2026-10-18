@@ -93,7 +93,8 @@ for(let x of [-.19,.19])for(let z of [-.34,.34]){const wheel=new THREE.Mesh(new 
 const legs=new THREE.Group();skater.add(legs);box(legs,.22,.62,.22,pantsMat,-.16,.62,0);box(legs,.22,.62,.22,pantsMat,.16,.62,0);box(legs,.56,.18,.27,shirtMat,0,1.08,0);const head=new THREE.Mesh(new THREE.SphereGeometry(.19,16,12),mat(0xdca77e));head.position.set(0,1.52,0);skater.add(head);box(skater,.12,.38,.12,shirtMat,-.37,1.04,0);box(skater,.12,.38,.12,shirtMat,.37,1.04,0);
 let velocity=0,vy=0,onGround=true,airSpin=0,airLean=0,spinVelocity=0,leanVelocity=0,airTime=0;
 let grinding=null,grindTime=0,grindBalance=0,kickflipTime=0,trickPoints=0;
-function jump(){if(!onGround)return;if(grinding){grinding=null;grindBalance=0}vy=5.6+Math.min(Math.abs(velocity)*.12,1.2);onGround=false;airTime=0;spinVelocity=0;leanVelocity=0;skater.rotation.x=0;skater.rotation.z=0}
+function finishGrind(){if(!grinding)return;const pts=Math.max(50,Math.floor(grindTime*120));score+=pts;trickPoints+=pts;document.getElementById('scoreText').textContent=score+' points';grinding=null;grindTime=0;grindBalance=0;toast('Grind! +'+pts)}
+function jump(){if(!onGround)return;if(grinding)finishGrind();vy=5.6+Math.min(Math.abs(velocity)*.12,1.2);onGround=false;airTime=0;spinVelocity=0;leanVelocity=0;skater.rotation.x=0;skater.rotation.z=0}
 function startKickflip(){if(mode!=='play'||onGround||kickflipTime>0)return;kickflipTime=.48;trickPoints+=300;toast('KICKFLIP! +300')}
 function grindSurfaceAt(x,z){let best=null,bestD=Infinity;for(const p of pieces){const type=p.userData.type;if(type!=='rail'&&type!=='box')continue;const local=new THREE.Vector3(x-p.position.x,0,z-p.position.z).applyAxisAngle(new THREE.Vector3(0,1,0),-p.rotation.y);let h=0,valid=false;if(type==='rail'&&Math.abs(local.x)<.32&&Math.abs(local.z)<1.7){h=.62;valid=true}else if(type==='box'&&Math.abs(local.x)<1.62&&Math.abs(local.z)<.68){h=.48;valid=true}if(!valid)continue;const dist=Math.abs((skater.position.y-.12)-h);if(dist<bestD&&dist<.72){bestD=dist;best={piece:p,height:h,type,local}}}return best}
 function groundHeight(x,z){let h=0;for(const p of pieces){const local=new THREE.Vector3(x-p.position.x,0,z-p.position.z);local.applyAxisAngle(new THREE.Vector3(0,1,0),-p.rotation.y);const ax=Math.abs(local.x),az=Math.abs(local.z),t=p.userData.type;if(t==='box'&&ax<1.5&&az<.55)h=Math.max(h,.48);if(t==='stairs'&&ax<1.4&&az<1.3){h=Math.max(h,.25*(4-Math.max(0,Math.floor((local.z+1.5)/.65))))}if(t==='ramp'&&ax<2&&az<1.5){h=Math.max(h,Math.max(0,(local.x+2)*.35))}if(t==='quarter'&&ax<2&&az<1.5){h=Math.max(h,Math.max(0,Math.min(2.5,(local.x+2)*.6)))}}return h}
@@ -128,7 +129,7 @@ function skateUpdate(dt){
   const grind=grindSurfaceAt(skater.position.x,skater.position.z);
   if(grind&&Math.abs(velocity)>1.1&&Math.abs(skater.position.y-(grind.height+.12))<.22){grinding=grind;grindTime=0;grindBalance=0;skater.position.y=grind.height+.12;toast('GRIND! Use A/D to balance')}
  }
- if(grinding){skater.position.y=grinding.height+.12;skater.rotation.y=grinding.piece.rotation.y;document.getElementById('modeText').textContent='GRIND '+Math.floor(grindTime*70)}
+ if(grinding){skater.position.y=grinding.height+.12;const stillOn=grindSurfaceAt(skater.position.x,skater.position.z);if(!stillOn){finishGrind();document.getElementById('modeText').textContent='SKATE MODE'}else{skater.rotation.y=grinding.piece.rotation.y;document.getElementById('modeText').textContent='GRIND '+Math.floor(grindTime*70)}}
  else document.getElementById('modeText').textContent='SKATE MODE';
  board.rotation.x=0;board.rotation.y=0;
  board.rotation.z=kickflipTime>0?Math.sin((.48-kickflipTime)/.48*Math.PI)*Math.PI*2:(onGround?Math.sin(performance.now()*.008)*.018:airLean*.12);
